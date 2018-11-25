@@ -27,9 +27,13 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f9913f3a27cb225866dc43b92ea368315d46f80c7ee65fc6abe073d5dd1bccbb"
+  digest = "1:144637ea7e0bd0a6f2256b17d12d22a11da8bcaa33b551e664dda6c2c5967eb0"
   name = "github.com/giantswarm/exporterkit"
-  packages = ["collector"]
+  packages = [
+    "collector",
+    "histogram",
+    "histogramvec",
+  ]
   pruneopts = "UT"
   revision = "a60dbc99e177d2c5cb847c65dd60ecb1eca4796f"
 
@@ -435,6 +439,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/giantswarm/exporterkit/collector",
+    "github.com/giantswarm/exporterkit/histogramvec",
     "github.com/giantswarm/microendpoint/endpoint/healthz",
     "github.com/giantswarm/microendpoint/endpoint/version",
     "github.com/giantswarm/microendpoint/service/version",
