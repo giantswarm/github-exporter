@@ -27,13 +27,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:144637ea7e0bd0a6f2256b17d12d22a11da8bcaa33b551e664dda6c2c5967eb0"
+  digest = "1:f9913f3a27cb225866dc43b92ea368315d46f80c7ee65fc6abe073d5dd1bccbb"
   name = "github.com/giantswarm/exporterkit"
-  packages = [
-    "collector",
-    "histogram",
-    "histogramvec",
-  ]
+  packages = ["collector"]
   pruneopts = "UT"
   revision = "a60dbc99e177d2c5cb847c65dd60ecb1eca4796f"
 
@@ -281,7 +277,7 @@
     "model",
   ]
   pruneopts = "UT"
-  revision = "aeab699e26f4d4089dba5e522e5d9babd2adbaf7"
+  revision = "4724e9255275ce38f7179b2478abeae4e28c904f"
 
 [[projects]]
   branch = "master"
@@ -294,7 +290,7 @@
     "xfs",
   ]
   pruneopts = "UT"
-  revision = "185b4288413d2a0dd0806f78c90dde719829e5ae"
+  revision = "619930b0b4713cc1280189bf0a4c54b3fb506f60"
 
 [[projects]]
   digest = "1:6a4a11ba764a56d2758899ec6f3848d24698d48442ebce85ee7a3f63284526cd"
@@ -381,11 +377,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:225564f71149334315118db714e1ea87513e4a11cf4acb27e26bc7577cebfa0b"
+  digest = "1:8775d8a768d9e65e8b659172804aac5db1fc8d563ba766470a6c2698c57c61a7"
   name = "golang.org/x/sys"
   packages = ["unix"]
   pruneopts = "UT"
-  revision = "62eef0e2fa9b2c385f7b2778e763486da6880d37"
+  revision = "4ed8d59d0b35e1e29334a206d1b3f38b1e5dfb31"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -439,7 +435,6 @@
   analyzer-version = 1
   input-imports = [
     "github.com/giantswarm/exporterkit/collector",
-    "github.com/giantswarm/exporterkit/histogramvec",
     "github.com/giantswarm/microendpoint/endpoint/healthz",
     "github.com/giantswarm/microendpoint/endpoint/version",
     "github.com/giantswarm/microendpoint/service/version",
