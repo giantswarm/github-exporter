@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
@@ -74,8 +73,14 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 		State: "all",
 	}
 
-	issueLabels := map[string]float64{}
+	type key struct {
+		Name  string
+		State string
+	}
+
+	issueLabels := map[key]float64{}
 	issueStates := map[string]float64{}
+
 	for {
 		issues, res, err := i.githubClient.Issues.ListByRepo(ctx, githubOrg, githubRepo, opts)
 		if err != nil {
@@ -90,23 +95,15 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 			}
 
 			for _, label := range issue.Labels {
-				k := fmt.Sprintf("%s:%s", label.GetName(), issue.GetState())
-
-				_, ok := issueLabels[k]
-				if !ok {
-					issueLabels[k] = 1
-				} else {
-					issueLabels[k]++
+				k := key{
+					Name:  label.GetName(),
+					State: issue.GetState(),
 				}
+				issueLabels[k] = issueLabels[k] + 1
 			}
 
 			{
-				_, ok := issueStates[issue.GetState()]
-				if !ok {
-					issueStates[issue.GetState()] = 1
-				} else {
-					issueStates[issue.GetState()]++
-				}
+				issueStates[issue.GetState()] = issueStates[issue.GetState()] + 1
 			}
 		}
 
@@ -122,17 +119,14 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 	}
 
 	for k, v := range issueLabels {
-		split := strings.Split(k, ":")
-
 		ch <- prometheus.MustNewConstMetric(
 			issueLabelsDesc,
 			prometheus.GaugeValue,
 			v,
-
 			githubOrg,
 			githubRepo,
-			split[0],
-			split[1],
+			k.Name,
+			k.State,
 		)
 	}
 
