@@ -147,18 +147,6 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 		)
 	}
 
-	i.issueTimeToCloseVec.Ensure(timeToCloseLabels)
-
-	for label, histogram := range i.issueTimeToCloseVec.Histograms() {
-		ch <- prometheus.MustNewConstHistogram(
-			issueTimeToCloseDesc,
-			histogram.Count(), histogram.Sum(), histogram.Buckets(),
-			githubOrg,
-			githubRepo,
-			label,
-		)
-	}
-
 	return nil
 }
 
