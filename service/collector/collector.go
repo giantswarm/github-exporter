@@ -8,6 +8,7 @@ const (
 const (
 	labelLabel  = "label"
 	labelLabels = "labels"
+	labelNumber = "number"
 	labelOrg    = "org"
 	labelRepo   = "repo"
 	labelState  = "state"
