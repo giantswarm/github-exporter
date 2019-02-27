@@ -56,3 +56,10 @@ github_exporter_issue_labels_count{labels="kind/okr,goal/missed"}
 ```
 github_exporter_issue_labels_count{labels=~"kind/okr,goal/.*"}
 ```
+
+Showing a graph of postmortem issues per team to see how many days it took to
+resolve them.
+
+```
+ceil((github_exporter_issue_closed_labels_seconds{labels=~"postmortem,team/.*"} - on(number,labels) github_exporter_issue_open_labels_seconds{labels=~"postmortem,team/.*"}) / 86400)
+```
