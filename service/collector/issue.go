@@ -37,11 +37,15 @@ var (
 type IssueConfig struct {
 	GithubClient *github.Client
 	Logger       micrologger.Logger
+
+	CustomLabels []string
 }
 
 type Issue struct {
 	githubClient *github.Client
 	logger       micrologger.Logger
+
+	customLabels []string
 }
 
 func NewIssue(config IssueConfig) (*Issue, error) {
@@ -55,6 +59,8 @@ func NewIssue(config IssueConfig) (*Issue, error) {
 	i := &Issue{
 		githubClient: config.GithubClient,
 		logger:       config.Logger,
+
+		customLabels: config.CustomLabels,
 	}
 
 	return i, nil

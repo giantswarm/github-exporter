@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"github.com/giantswarm/github-exporter/flag"
@@ -65,6 +66,8 @@ func New(config Config) (*Service, error) {
 		c := collector.SetConfig{
 			GithubClient: githubClient,
 			Logger:       config.Logger,
+
+			CustomLabels: mustParseJSONList(config.Viper.GetString(config.Flag.Service.Collector.Issue.CustomLabels)),
 		}
 
 		exporterCollector, err = collector.NewSet(c)
@@ -102,4 +105,14 @@ func (s *Service) Boot(ctx context.Context) {
 	s.bootOnce.Do(func() {
 		go s.exporterCollector.Boot(ctx)
 	})
+}
+
+func mustParseJSONList(s string) []string {
+	var l []string
+	err := json.Unmarshal([]byte(s), &l)
+	if err != nil {
+		panic(err)
+	}
+
+	return l
 }

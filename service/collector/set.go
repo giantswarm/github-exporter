@@ -10,6 +10,8 @@ import (
 type SetConfig struct {
 	GithubClient *github.Client
 	Logger       micrologger.Logger
+
+	CustomLabels []string
 }
 
 // Set is basically only a wrapper for the operator's collector implementations.
@@ -27,6 +29,8 @@ func NewSet(config SetConfig) (*Set, error) {
 		c := IssueConfig{
 			GithubClient: config.GithubClient,
 			Logger:       config.Logger,
+
+			CustomLabels: config.CustomLabels,
 		}
 
 		issueCollector, err = NewIssue(c)
