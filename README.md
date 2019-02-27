@@ -42,9 +42,17 @@ github_exporter_issue_labels_count{labels="postmortem,team/magic"}
 github_exporter_issue_labels_count{labels="postmortem,team/spirit"}
 ```
 
+```
+github_exporter_issue_labels_count{labels=~"postmortem,team/.*"}
+```
+
 Showing a graph of open and closed OKR issues per goal.
 
 ```
 github_exporter_issue_labels_count{labels="kind/okr,goal/achieved"}
 github_exporter_issue_labels_count{labels="kind/okr,goal/missed"}
+```
+
+```
+github_exporter_issue_labels_count{labels=~"kind/okr,goal/.*"}
 ```
