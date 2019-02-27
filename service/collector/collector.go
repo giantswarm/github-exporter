@@ -6,10 +6,11 @@ const (
 )
 
 const (
-	labelLabel = "label"
-	labelOrg   = "org"
-	labelRepo  = "repo"
-	labelState = "state"
+	labelLabel  = "label"
+	labelLabels = "labels"
+	labelOrg    = "org"
+	labelRepo   = "repo"
+	labelState  = "state"
 )
 
 const (

@@ -108,6 +108,7 @@ func mainError() error {
 
 	daemonCommand := newCommand.DaemonCommand().CobraCommand()
 
+	daemonCommand.PersistentFlags().String(f.Service.Collector.Issue.CustomLabels, "[]", "JSON list of custom labels.")
 	daemonCommand.PersistentFlags().String(f.Service.Github.Auth.Token, "", "Auth token to access the Github API.")
 
 	newCommand.CobraCommand().Execute()
