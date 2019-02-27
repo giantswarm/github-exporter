@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
@@ -11,13 +12,24 @@ import (
 )
 
 var (
-	issueLabelsDesc *prometheus.Desc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, subsystem, "labels_count"),
-		"Github issue labels.",
+	issueLabelDesc *prometheus.Desc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, subsystem, "label_count"),
+		"Github issues per label.",
 		[]string{
 			labelOrg,
 			labelRepo,
 			labelLabel,
+			labelState,
+		},
+		nil,
+	)
+	issueLabelsDesc *prometheus.Desc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, subsystem, "labels_count"),
+		"Github issues per combined labels.",
+		[]string{
+			labelOrg,
+			labelRepo,
+			labelLabels,
 			labelState,
 		},
 		nil,
@@ -84,6 +96,7 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 		State string
 	}
 
+	issueLabel := map[key]float64{}
 	issueLabels := map[key]float64{}
 	issueStates := map[string]float64{}
 
@@ -105,7 +118,17 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 					Name:  label.GetName(),
 					State: issue.GetState(),
 				}
-				issueLabels[k] = issueLabels[k] + 1
+				issueLabel[k] = issueLabel[k] + 1
+			}
+
+			for _, selector := range i.customLabels {
+				if hasLabels(issue, selector) {
+					k := key{
+						Name:  selector,
+						State: issue.GetState(),
+					}
+					issueLabels[k] = issueLabels[k] + 1
+				}
 			}
 
 			{
@@ -122,6 +145,18 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 			break
 		}
 		opts.Page = res.NextPage
+	}
+
+	for k, v := range issueLabel {
+		ch <- prometheus.MustNewConstMetric(
+			issueLabelDesc,
+			prometheus.GaugeValue,
+			v,
+			githubOrg,
+			githubRepo,
+			k.Name,
+			k.State,
+		)
 	}
 
 	for k, v := range issueLabels {
@@ -151,7 +186,29 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 }
 
 func (i *Issue) Describe(ch chan<- *prometheus.Desc) error {
+	ch <- issueLabelDesc
 	ch <- issueLabelsDesc
 	ch <- issueStatesDesc
 	return nil
+}
+
+func hasLabels(issue *github.Issue, selector string) bool {
+	selectorLabels := strings.Split(selector, ",")
+
+	for _, selectorLabel := range selectorLabels {
+		found := false
+
+		for _, issueLabel := range issue.Labels {
+			if issueLabel.GetName() == selectorLabel {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+
+	return true
 }
