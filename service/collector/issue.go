@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/giantswarm/microerror"
 	"github.com/giantswarm/micrologger"
@@ -45,6 +46,38 @@ var (
 		nil,
 	)
 )
+
+var (
+	issueLabelLifetimeHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    prometheus.BuildFQName(namespace, subsystem, "label_lifetime"),
+			Help:    "Github issue lifetime per label.",
+			Buckets: prometheus.ExponentialBuckets(60*60*24, 2, 10),
+		},
+		[]string{
+			labelOrg,
+			labelRepo,
+			labelLabels,
+		},
+	)
+	issueLabelsLifetimeHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    prometheus.BuildFQName(namespace, subsystem, "labels_lifetime"),
+			Help:    "Github issue lifetime per combined labels.",
+			Buckets: prometheus.ExponentialBuckets(60*60*24, 2, 10),
+		},
+		[]string{
+			labelOrg,
+			labelRepo,
+			labelLabels,
+		},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(issueLabelLifetimeHistogramVec)
+	prometheus.MustRegister(issueLabelsLifetimeHistogramVec)
+}
 
 type IssueConfig struct {
 	GithubClient *github.Client
@@ -88,11 +121,12 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 			// https://developer.github.com/v3/search/#about-the-search-api.
 			PerPage: 1000,
 		},
+		Since: time.Now().AddDate(-1, 0, 0), // one year ago
 		State: "all",
 	}
 
 	type key struct {
-		Name  string
+		Label string
 		State string
 	}
 
@@ -114,20 +148,36 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 			}
 
 			for _, label := range issue.Labels {
-				k := key{
-					Name:  label.GetName(),
-					State: issue.GetState(),
+				{
+					k := key{
+						Label: label.GetName(),
+						State: issue.GetState(),
+					}
+					issueLabel[k] = issueLabel[k] + 1
 				}
-				issueLabel[k] = issueLabel[k] + 1
+
+				if issue.GetState() == "closed" {
+					f := float64(issue.GetClosedAt().Unix() - issue.GetCreatedAt().Unix())
+					issueLabelLifetimeHistogramVec.WithLabelValues(githubOrg, githubRepo, label.GetName()).Observe(f)
+				}
 			}
 
 			for _, selector := range i.customLabels {
-				if hasLabels(issue, selector) {
+				if !hasLabels(issue, selector) {
+					continue
+				}
+
+				{
 					k := key{
-						Name:  selector,
+						Label: selector,
 						State: issue.GetState(),
 					}
 					issueLabels[k] = issueLabels[k] + 1
+				}
+
+				if issue.GetState() == "closed" {
+					f := float64(issue.GetClosedAt().Unix() - issue.GetCreatedAt().Unix())
+					issueLabelsLifetimeHistogramVec.WithLabelValues(githubOrg, githubRepo, selector).Observe(f)
 				}
 			}
 
@@ -154,7 +204,7 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 			v,
 			githubOrg,
 			githubRepo,
-			k.Name,
+			k.Label,
 			k.State,
 		)
 	}
@@ -166,7 +216,7 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 			v,
 			githubOrg,
 			githubRepo,
-			k.Name,
+			k.Label,
 			k.State,
 		)
 	}

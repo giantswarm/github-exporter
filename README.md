@@ -56,3 +56,10 @@ github_exporter_issue_labels_count{labels="kind/okr,goal/missed"}
 ```
 github_exporter_issue_labels_count{labels=~"kind/okr,goal/.*"}
 ```
+
+Showing a graph of postmortem issues per team to see how many days it took to
+resolve them.
+
+```
+histogram_quantile(0.95, github_exporter_issue_labels_lifetime_bucket)
+```
