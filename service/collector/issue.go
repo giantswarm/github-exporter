@@ -88,9 +88,6 @@ type Issue struct {
 	githubClient *github.Client
 	logger       micrologger.Logger
 
-	issueLabelLifetimeHistogramVec  *prometheus.HistogramVec
-	issueLabelsLifetimeHistogramVec *prometheus.HistogramVec
-
 	customLabels []string
 }
 
@@ -105,9 +102,6 @@ func NewIssue(config IssueConfig) (*Issue, error) {
 	i := &Issue{
 		githubClient: config.GithubClient,
 		logger:       config.Logger,
-
-		issueLabelLifetimeHistogramVec:  issueLabelLifetimeHistogramVec,
-		issueLabelsLifetimeHistogramVec: issueLabelsLifetimeHistogramVec,
 
 		customLabels: config.CustomLabels,
 	}
@@ -163,7 +157,7 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 
 				if issue.GetState() == "closed" {
 					f := float64(issue.GetClosedAt().Unix() - issue.GetCreatedAt().Unix())
-					i.issueLabelLifetimeHistogramVec.WithLabelValues(githubOrg, githubRepo, label.GetName()).Observe(f)
+					issueLabelLifetimeHistogramVec.WithLabelValues(githubOrg, githubRepo, label.GetName()).Observe(f)
 				}
 			}
 
@@ -182,7 +176,7 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 
 				if issue.GetState() == "closed" {
 					f := float64(issue.GetClosedAt().Unix() - issue.GetCreatedAt().Unix())
-					i.issueLabelsLifetimeHistogramVec.WithLabelValues(githubOrg, githubRepo, selector).Observe(f)
+					issueLabelsLifetimeHistogramVec.WithLabelValues(githubOrg, githubRepo, selector).Observe(f)
 				}
 			}
 
