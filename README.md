@@ -25,13 +25,13 @@ github_exporter_issue_states_count
 Showing a graph of open and closed postmortem issues.
 
 ```
-github_exporter_issue_label_count{label="postmortem"}
+github_exporter_issue_labels_count{labels="postmortem"}
 ```
 
 Showing a graph of open and closed bug issues.
 
 ```
-github_exporter_issue_label_count{label="kind/bug"}
+github_exporter_issue_labels_count{labels="kind/bug"}
 ```
 
 Showing a graph of open and closed postmortem issues per team.
