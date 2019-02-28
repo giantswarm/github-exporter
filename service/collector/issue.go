@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -14,28 +13,6 @@ import (
 )
 
 var (
-	issueClosedLabelSecondsDesc *prometheus.Desc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, subsystem, "closed_label_seconds"),
-		"Timestamps of closed issues per label.",
-		[]string{
-			labelOrg,
-			labelRepo,
-			labelLabel,
-			labelNumber,
-		},
-		nil,
-	)
-	issueClosedLabelsSecondsDesc *prometheus.Desc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, subsystem, "closed_labels_seconds"),
-		"Timestamps of closed issues per combined labels.",
-		[]string{
-			labelOrg,
-			labelRepo,
-			labelLabels,
-			labelNumber,
-		},
-		nil,
-	)
 	issueLabelCountDesc *prometheus.Desc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, subsystem, "label_count"),
 		"Github issues per label.",
@@ -58,28 +35,6 @@ var (
 		},
 		nil,
 	)
-	issueOpenLabelSecondsDesc *prometheus.Desc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, subsystem, "open_label_seconds"),
-		"Timestamps of open issues per label.",
-		[]string{
-			labelOrg,
-			labelRepo,
-			labelLabel,
-			labelNumber,
-		},
-		nil,
-	)
-	issueOpenLabelsSecondsDesc *prometheus.Desc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, subsystem, "open_labels_seconds"),
-		"Timestamps of open issues per combined labels.",
-		[]string{
-			labelOrg,
-			labelRepo,
-			labelLabels,
-			labelNumber,
-		},
-		nil,
-	)
 	issueStatesCountDesc *prometheus.Desc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, subsystem, "states_count"),
 		"Github issue states.",
@@ -92,6 +47,36 @@ var (
 	)
 )
 
+var (
+	issueLabelLifetimeHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    prometheus.BuildFQName(namespace, subsystem, "label_lifetime"),
+			Buckets: prometheus.ExponentialBuckets(60*60*24, 2, 10),
+		},
+		[]string{
+			labelOrg,
+			labelRepo,
+			labelLabels,
+		},
+	)
+	issueLabelsLifetimeHistogramVec = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    prometheus.BuildFQName(namespace, subsystem, "labels_lifetime"),
+			Buckets: prometheus.ExponentialBuckets(60*60*24, 2, 10),
+		},
+		[]string{
+			labelOrg,
+			labelRepo,
+			labelLabels,
+		},
+	)
+)
+
+func init() {
+	prometheus.MustRegister(issueLabelLifetimeHistogramVec)
+	prometheus.MustRegister(issueLabelsLifetimeHistogramVec)
+}
+
 type IssueConfig struct {
 	GithubClient *github.Client
 	Logger       micrologger.Logger
@@ -102,6 +87,9 @@ type IssueConfig struct {
 type Issue struct {
 	githubClient *github.Client
 	logger       micrologger.Logger
+
+	issueLabelLifetimeHistogramVec  *prometheus.HistogramVec
+	issueLabelsLifetimeHistogramVec *prometheus.HistogramVec
 
 	customLabels []string
 }
@@ -117,6 +105,9 @@ func NewIssue(config IssueConfig) (*Issue, error) {
 	i := &Issue{
 		githubClient: config.GithubClient,
 		logger:       config.Logger,
+
+		issueLabelLifetimeHistogramVec:  issueLabelLifetimeHistogramVec,
+		issueLabelsLifetimeHistogramVec: issueLabelsLifetimeHistogramVec,
 
 		customLabels: config.CustomLabels,
 	}
@@ -145,11 +136,7 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 	}
 
 	issueLabelCount := map[key]float64{}
-	issueClosedLabelSeconds := map[key]float64{}
-	issueClosedLabelsSeconds := map[key]float64{}
 	issueLabelsCount := map[key]float64{}
-	issueOpenLabelSeconds := map[key]float64{}
-	issueOpenLabelsSeconds := map[key]float64{}
 	issueStatesCount := map[string]float64{}
 
 	for {
@@ -175,13 +162,8 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 				}
 
 				if issue.GetState() == "closed" {
-					k := key{
-						Label:  label.GetName(),
-						Number: strconv.Itoa(issue.GetNumber()),
-						State:  issue.GetState(),
-					}
-					issueOpenLabelSeconds[k] = float64(issue.GetCreatedAt().Unix())
-					issueClosedLabelSeconds[k] = float64(issue.GetClosedAt().Unix())
+					f := float64(issue.GetClosedAt().Unix() - issue.GetCreatedAt().Unix())
+					i.issueLabelLifetimeHistogramVec.WithLabelValues(githubOrg, githubRepo, label.GetName()).Observe(f)
 				}
 			}
 
@@ -199,13 +181,8 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 				}
 
 				if issue.GetState() == "closed" {
-					k := key{
-						Label:  selector,
-						Number: strconv.Itoa(issue.GetNumber()),
-						State:  issue.GetState(),
-					}
-					issueOpenLabelsSeconds[k] = float64(issue.GetCreatedAt().Unix())
-					issueClosedLabelsSeconds[k] = float64(issue.GetClosedAt().Unix())
+					f := float64(issue.GetClosedAt().Unix() - issue.GetCreatedAt().Unix())
+					i.issueLabelsLifetimeHistogramVec.WithLabelValues(githubOrg, githubRepo, selector).Observe(f)
 				}
 			}
 
@@ -223,30 +200,6 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 			break
 		}
 		opts.Page = res.NextPage
-	}
-
-	for k, v := range issueClosedLabelSeconds {
-		ch <- prometheus.MustNewConstMetric(
-			issueClosedLabelSecondsDesc,
-			prometheus.GaugeValue,
-			v,
-			githubOrg,
-			githubRepo,
-			k.Label,
-			k.Number,
-		)
-	}
-
-	for k, v := range issueClosedLabelsSeconds {
-		ch <- prometheus.MustNewConstMetric(
-			issueClosedLabelsSecondsDesc,
-			prometheus.GaugeValue,
-			v,
-			githubOrg,
-			githubRepo,
-			k.Label,
-			k.Number,
-		)
 	}
 
 	for k, v := range issueLabelCount {
@@ -273,30 +226,6 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 		)
 	}
 
-	for k, v := range issueOpenLabelSeconds {
-		ch <- prometheus.MustNewConstMetric(
-			issueOpenLabelSecondsDesc,
-			prometheus.GaugeValue,
-			v,
-			githubOrg,
-			githubRepo,
-			k.Label,
-			k.Number,
-		)
-	}
-
-	for k, v := range issueOpenLabelsSeconds {
-		ch <- prometheus.MustNewConstMetric(
-			issueOpenLabelsSecondsDesc,
-			prometheus.GaugeValue,
-			v,
-			githubOrg,
-			githubRepo,
-			k.Label,
-			k.Number,
-		)
-	}
-
 	for k, v := range issueStatesCount {
 		ch <- prometheus.MustNewConstMetric(
 			issueStatesCountDesc,
@@ -312,12 +241,8 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 }
 
 func (i *Issue) Describe(ch chan<- *prometheus.Desc) error {
-	ch <- issueClosedLabelSecondsDesc
-	ch <- issueClosedLabelsSecondsDesc
 	ch <- issueLabelCountDesc
 	ch <- issueLabelsCountDesc
-	ch <- issueOpenLabelSecondsDesc
-	ch <- issueOpenLabelsSecondsDesc
 	ch <- issueStatesCountDesc
 	return nil
 }
