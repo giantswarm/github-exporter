@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	issueLabelCountDesc *prometheus.Desc = prometheus.NewDesc(
+	issueLabelDesc *prometheus.Desc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, subsystem, "label_count"),
 		"Github issues per label.",
 		[]string{
@@ -24,7 +24,7 @@ var (
 		},
 		nil,
 	)
-	issueLabelsCountDesc *prometheus.Desc = prometheus.NewDesc(
+	issueLabelsDesc *prometheus.Desc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, subsystem, "labels_count"),
 		"Github issues per combined labels.",
 		[]string{
@@ -35,7 +35,7 @@ var (
 		},
 		nil,
 	)
-	issueStatesCountDesc *prometheus.Desc = prometheus.NewDesc(
+	issueStatesDesc *prometheus.Desc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, subsystem, "states_count"),
 		"Github issue states.",
 		[]string{
@@ -51,6 +51,7 @@ var (
 	issueLabelLifetimeHistogramVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    prometheus.BuildFQName(namespace, subsystem, "label_lifetime"),
+			Help:    "Github issue lifetime per label.",
 			Buckets: prometheus.ExponentialBuckets(60*60*24, 2, 10),
 		},
 		[]string{
@@ -62,6 +63,7 @@ var (
 	issueLabelsLifetimeHistogramVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    prometheus.BuildFQName(namespace, subsystem, "labels_lifetime"),
+			Help:    "Github issue lifetime per combined labels.",
 			Buckets: prometheus.ExponentialBuckets(60*60*24, 2, 10),
 		},
 		[]string{
@@ -124,14 +126,13 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 	}
 
 	type key struct {
-		Label  string
-		Number string
-		State  string
+		Label string
+		State string
 	}
 
-	issueLabelCount := map[key]float64{}
-	issueLabelsCount := map[key]float64{}
-	issueStatesCount := map[string]float64{}
+	issueLabel := map[key]float64{}
+	issueLabels := map[key]float64{}
+	issueStates := map[string]float64{}
 
 	for {
 		issues, res, err := i.githubClient.Issues.ListByRepo(ctx, githubOrg, githubRepo, opts)
@@ -152,7 +153,7 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 						Label: label.GetName(),
 						State: issue.GetState(),
 					}
-					issueLabelCount[k] = issueLabelCount[k] + 1
+					issueLabel[k] = issueLabel[k] + 1
 				}
 
 				if issue.GetState() == "closed" {
@@ -171,7 +172,7 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 						Label: selector,
 						State: issue.GetState(),
 					}
-					issueLabelsCount[k] = issueLabelsCount[k] + 1
+					issueLabels[k] = issueLabels[k] + 1
 				}
 
 				if issue.GetState() == "closed" {
@@ -181,7 +182,7 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 			}
 
 			{
-				issueStatesCount[issue.GetState()] = issueStatesCount[issue.GetState()] + 1
+				issueStates[issue.GetState()] = issueStates[issue.GetState()] + 1
 			}
 		}
 
@@ -196,9 +197,9 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 		opts.Page = res.NextPage
 	}
 
-	for k, v := range issueLabelCount {
+	for k, v := range issueLabel {
 		ch <- prometheus.MustNewConstMetric(
-			issueLabelCountDesc,
+			issueLabelDesc,
 			prometheus.GaugeValue,
 			v,
 			githubOrg,
@@ -208,9 +209,9 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 		)
 	}
 
-	for k, v := range issueLabelsCount {
+	for k, v := range issueLabels {
 		ch <- prometheus.MustNewConstMetric(
-			issueLabelsCountDesc,
+			issueLabelsDesc,
 			prometheus.GaugeValue,
 			v,
 			githubOrg,
@@ -220,9 +221,9 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 		)
 	}
 
-	for k, v := range issueStatesCount {
+	for k, v := range issueStates {
 		ch <- prometheus.MustNewConstMetric(
-			issueStatesCountDesc,
+			issueStatesDesc,
 			prometheus.GaugeValue,
 			v,
 			githubOrg,
@@ -235,9 +236,9 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 }
 
 func (i *Issue) Describe(ch chan<- *prometheus.Desc) error {
-	ch <- issueLabelCountDesc
-	ch <- issueLabelsCountDesc
-	ch <- issueStatesCountDesc
+	ch <- issueLabelDesc
+	ch <- issueLabelsDesc
+	ch <- issueStatesDesc
 	return nil
 }
 
