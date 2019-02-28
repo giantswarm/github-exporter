@@ -13,20 +13,9 @@ import (
 )
 
 var (
-	issueLabelDesc *prometheus.Desc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, subsystem, "label_count"),
-		"Github issues per label.",
-		[]string{
-			labelOrg,
-			labelRepo,
-			labelLabel,
-			labelState,
-		},
-		nil,
-	)
 	issueLabelsDesc *prometheus.Desc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, subsystem, "labels_count"),
-		"Github issues per combined labels.",
+		"Github issues per labels.",
 		[]string{
 			labelOrg,
 			labelRepo,
@@ -48,22 +37,10 @@ var (
 )
 
 var (
-	issueLabelLifetimeHistogramVec = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    prometheus.BuildFQName(namespace, subsystem, "label_lifetime"),
-			Help:    "Github issue lifetime per label.",
-			Buckets: prometheus.ExponentialBuckets(60*60*24, 2, 10),
-		},
-		[]string{
-			labelOrg,
-			labelRepo,
-			labelLabels,
-		},
-	)
 	issueLabelsLifetimeHistogramVec = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    prometheus.BuildFQName(namespace, subsystem, "labels_lifetime"),
-			Help:    "Github issue lifetime per combined labels.",
+			Help:    "Github issue lifetime per labels.",
 			Buckets: prometheus.ExponentialBuckets(60*60*24, 2, 10),
 		},
 		[]string{
@@ -75,7 +52,6 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(issueLabelLifetimeHistogramVec)
 	prometheus.MustRegister(issueLabelsLifetimeHistogramVec)
 }
 
@@ -130,7 +106,6 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 		State string
 	}
 
-	issueLabel := map[key]float64{}
 	issueLabels := map[key]float64{}
 	issueStates := map[string]float64{}
 
@@ -153,12 +128,12 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 						Label: label.GetName(),
 						State: issue.GetState(),
 					}
-					issueLabel[k] = issueLabel[k] + 1
+					issueLabels[k] = issueLabels[k] + 1
 				}
 
 				if issue.GetState() == "closed" {
 					f := float64(issue.GetClosedAt().Unix() - issue.GetCreatedAt().Unix())
-					issueLabelLifetimeHistogramVec.WithLabelValues(githubOrg, githubRepo, label.GetName()).Observe(f)
+					issueLabelsLifetimeHistogramVec.WithLabelValues(githubOrg, githubRepo, label.GetName()).Observe(f)
 				}
 			}
 
@@ -197,18 +172,6 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 		opts.Page = res.NextPage
 	}
 
-	for k, v := range issueLabel {
-		ch <- prometheus.MustNewConstMetric(
-			issueLabelDesc,
-			prometheus.GaugeValue,
-			v,
-			githubOrg,
-			githubRepo,
-			k.Label,
-			k.State,
-		)
-	}
-
 	for k, v := range issueLabels {
 		ch <- prometheus.MustNewConstMetric(
 			issueLabelsDesc,
@@ -236,7 +199,6 @@ func (i *Issue) Collect(ch chan<- prometheus.Metric) error {
 }
 
 func (i *Issue) Describe(ch chan<- *prometheus.Desc) error {
-	ch <- issueLabelDesc
 	ch <- issueLabelsDesc
 	ch <- issueStatesDesc
 	return nil

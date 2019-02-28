@@ -6,7 +6,6 @@ const (
 )
 
 const (
-	labelLabel  = "label"
 	labelLabels = "labels"
 	labelOrg    = "org"
 	labelRepo   = "repo"

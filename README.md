@@ -25,13 +25,13 @@ github_exporter_issue_states_count
 Showing a graph of open and closed postmortem issues.
 
 ```
-github_exporter_issue_label_count{label="postmortem"}
+github_exporter_issue_labels_count{labels="postmortem"}
 ```
 
 Showing a graph of open and closed bug issues.
 
 ```
-github_exporter_issue_label_count{label="kind/bug"}
+github_exporter_issue_labels_count{labels="kind/bug"}
 ```
 
 Showing a graph of open and closed postmortem issues per team.
@@ -61,5 +61,5 @@ Showing a graph of postmortem issues per team to see how many days it took to
 resolve them.
 
 ```
-histogram_quantile(0.95, github_exporter_issue_labels_lifetime_bucket)
+histogram_quantile(0.95, github_exporter_issue_labels_lifetime_bucket{labels=~"postmortem,team/.*"})
 ```
