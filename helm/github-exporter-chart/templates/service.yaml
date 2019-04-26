@@ -5,9 +5,7 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     app: github-exporter
-  annotations:
     giantswarm.io/exporter: "true"
-    prometheus.io/scrape: "true"
 spec:
   ports:
   - port: 8000
