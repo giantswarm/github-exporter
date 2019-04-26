@@ -71,10 +71,10 @@ spec:
           timeoutSeconds: 1
         resources:
           requests:
-            cpu: 250m
+            cpu: 50m
             memory: 250Mi
           limits:
-            cpu: 250m
+            cpu: 50m
             memory: 250Mi
       imagePullSecrets:
       - name: github-exporter-pull-secret
