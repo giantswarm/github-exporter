@@ -1,0 +1,6 @@
+clusterRoleBindingName: github-exporter
+clusterRoleBindingNamePSP: github-exporter-psp
+clusterRoleName: github-exporter
+clusterRoleNamePSP: github-exporter-psp
+namespace: giantswarm
+pspName: github-exporter-psp

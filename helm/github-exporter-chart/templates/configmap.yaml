@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: github-exporter-configmap
+  namespace: {{ .Values.namespace }}
+data:
+  config.yml: |
+    server:
+      listen:
+        address: 'http://0.0.0.0:8000'
+    service:
+      collector:
+        issue:
+          customlabels: '[ "kind/okr,goal/achieved", "kind/okr,goal/missed", "postmortem,team/batman", "postmortem,team/magic", "postmortem,team/ludacris", "postmortem,team/firecracker" ]'

@@ -1,0 +1,80 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: github-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: github-exporter
+  annotations:
+    checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        releasetime: {{ $.Release.Time }}
+      labels:
+        app: github-exporter
+    spec:
+      volumes:
+      - name: github-exporter-configmap
+        configMap:
+          name: github-exporter-configmap
+          items:
+          - key: config.yaml
+            path: config.yaml
+      - name: github-exporter-secret
+        secret:
+          secretName: github-exporter-secret
+          items:
+          - key: secret.yaml
+            path: secret.yaml
+      - name: certs
+        hostPath:
+          path: /etc/ssl/certs/ca-certificates.crt
+      serviceAccountName: github-exporter
+      containers:
+      - name: github-exporter
+        image: quay.io/giantswarm/github-exporter:[[ .DockerTag ]]
+        volumeMounts:
+        - name: github-exporter-configmap
+          mountPath: /var/run/github-exporter/configmap/
+        - name: github-exporter-secret
+          mountPath: /var/run/github-exporter/secret/
+          readOnly: true
+        - name: certs
+          mountPath: /etc/ssl/certs/ca-certificates.crt
+          readOnly: true
+        ports:
+        - name: http
+          containerPort: 8000
+        args:
+        - daemon
+        - --config.dirs=/var/run/github-exporter/configmap/
+        - --config.dirs=/var/run/github-exporter/secret/
+        - --config.files=config
+        - --config.files=secret
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 15
+          timeoutSeconds: 1
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 15
+          timeoutSeconds: 1
+        resources:
+          requests:
+            cpu: 250m
+            memory: 250Mi
+          limits:
+            cpu: 250m
+            memory: 250Mi
+      imagePullSecrets:
+      - name: github-exporter-pull-secret
